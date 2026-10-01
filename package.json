@@ -11,6 +11,7 @@
   },
   "keywords": [],
   "dependencies": {
+    "@kafkajs/confluent-schema-registry": "^4.1.0",
     "dotenv": "^18.0.4",
     "kafkajs": "^2.2.4"
   }

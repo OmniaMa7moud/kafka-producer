@@ -2,6 +2,8 @@ require("dotenv").config();
 
 const { Kafka } = require("kafkajs");
 
+const { SchemaRegistry } = require("@kafkajs/confluent-schema-registry");
+
 const kafka = new Kafka({
   clientId: "orders-producer",
   brokers: process.env.KAFKA_BROKERS.split(","),
@@ -19,6 +21,14 @@ const producer = kafka.producer();
 
 const topic = process.env.KAFKA_TOPIC;
 
+const registry = new SchemaRegistry({
+  host: process.env.SCHEMA_REGISTRY_URL,
+  auth: {
+    username: process.env.SCHEMA_REGISTRY_API_KEY,
+    password: process.env.SCHEMA_REGISTRY_API_SECRET,
+  },
+});
+
 function generateOrder() {
   return {
     orderId: `ORD-${Date.now()}`,
@@ -35,12 +45,18 @@ function generateOrder() {
 async function produceMessage() {
   const order = generateOrder();
 
+  // Get the latest schema ID registered under orders-value
+  const schemaId = await registry.getLatestSchemaId("orders-value");
+
+  // Serialize the order using the JSON Schema
+  const encodedValue = await registry.encode(schemaId, order);
+
   await producer.send({
     topic,
     messages: [
       {
         key: order.orderId,
-        value: JSON.stringify(order),
+        value: encodedValue,
       },
     ],
   });
